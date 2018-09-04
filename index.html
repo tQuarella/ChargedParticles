@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="//cdn.jsdelivr.net/npm/phaser@3.10.1/dist/phaser.min.js"></script>
+</head>
+<body>
+
+    <script>
+    var config = {
+        type: Phaser.AUTO,
+        width: 800,
+        height: 600,
+        physics: {
+            default: 'arcade',
+            arcade: {
+                gravity: { y: 0 },
+                debug: false
+            }
+        },
+        scene: {
+            preload: preload,
+            create: create,
+            update: update
+        }
+    };
+
+    var game = new Phaser.Game(config);
+
+    function preload ()
+    {
+        this.load.image('star', 'assets/star.png');
+        this.load.image('bomb', 'assets/bomb.png');
+        this.load.spritesheet('dude', 
+            'assets/dude.png',
+            { frameWidth: 32, frameHeight: 48 }
+        );
+    }
+
+    var enemy;
+    var player;
+    var nodes;
+    var scoreText;
+
+    function create ()
+    {
+        cursors = this.input.keyboard.createCursorKeys();
+
+        scoreText = this.add.text(
+            16, 16, 
+            '',
+            {fontSize: '16px', fill: '#FFF' }
+        );
+
+        player = this.physics.add.sprite(100, 450, 'star')
+        player.setCollideWorldBounds(true);
+        player.setBounce(0.2);
+        player.particles = 0;
+
+        enemy = this.physics.add.sprite(775, 50, 'dude');
+        enemy.setCollideWorldBounds(true);
+        enemy.setBounce(0.2);
+        enemy.particles = 100;
+
+        createNodes(this);
+
+        this.physics.add.collider(player, enemy, fight, null, this);
+    }
+
+    function createNodes(gameState) {
+        nodes = gameState.physics.add.staticGroup();
+
+        for(i=0; i<5; i++) {
+            var x = Phaser.Math.Between(10, 750);
+            var y = Phaser.Math.Between(10, 575);
+
+            var node = nodes.create(x, y, 'bomb');
+            var nodeText = gameState.add.text(node.x - 5, node.y+10, 0);
+            node.particleCountLabel = nodeText;
+            node.production = Phaser.Math.Between(0,10);
+        }
+    }
+    function updateScore() {
+        scoreText.setText(
+            'p: ' + player.particles + '\n' +
+            'e: ' + enemy.particles
+        );
+    }
+    function collectParticles(player, node) {
+        var nodeParts = parseInt(node.particleCountLabel.text);
+        player.particles += nodeParts;
+
+        node.particleCountLabel.setText('0');
+    }
+
+    function fight(player, enemy) {
+        var enemyParticles = enemy.particles;
+        var playerParticles = player.particles;
+        player.particles -= enemyParticles;
+        enemy.particles -= playerParticles;
+
+        if (player.particles < 0) { player.particles = 0; }
+        if (enemy.particles < 0) { enemy.particles = 0; }
+    }
+
+    function update() {
+        handleInput();
+        handleNodeProduction();
+        updateScore();
+        enemyMove();
+        this.physics.overlap(
+            player, nodes, collectParticles, null, this
+        );
+    }
+
+    function enemyMove() {
+        
+    }
+
+    function handleNodeProduction() {
+        nodes.children.iterate(function(child) {
+            if (Phaser.Math.Between(0,100) > 100 - child.production ) {
+                var lbl = child.particleCountLabel;
+                lbl.setText(parseInt(lbl.text)+1);
+            }
+        });
+    }
+
+    function handleInput() {
+        var drag = 0.98;
+        var accel = 5;
+
+        var xvel = player.body.velocity.x;
+        player.setVelocityX(xvel * drag); 
+        if (cursors.left.isDown) {
+            player.setVelocityX(xvel-accel);
+        }
+        if (cursors.right.isDown) {
+            player.setVelocityX(xvel+accel);
+        }
+        
+        var yvel = player.body.velocity.y;
+        player.setVelocityY(yvel * drag);
+        if (cursors.up.isDown) {
+            player.setVelocityY(yvel-accel);
+        }
+        if (cursors.down.isDown) {
+            player.setVelocityY(yvel+accel);
+        }
+    }
+    </script>
+
+</body>
+</html>
